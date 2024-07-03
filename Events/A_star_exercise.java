@@ -3,6 +3,7 @@ package Events;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +12,7 @@ import java.util.Scanner;
 
 class Solution {
     static Map<Integer, List<Destinate>> ways;
-    
+
     public static void main(String args[]) {
         Scanner in = new Scanner(System.in);
         int N = in.nextInt();
@@ -19,14 +20,13 @@ class Solution {
         int S = in.nextInt();
         int G = in.nextInt();
         ways = new HashMap<>();
-        int[][] values = new int[N][2];
-        // for (int i = 0; i < N; i++) {
-        //     Arrays.fill(values[i], Integer.MAX_VALUE);
-        // }
+        int[][] values = new int[N][2]; // [g-value, h-value]
         for (int i = 0; i < N; i++) {
-            int node = in.nextInt();
-            values[i][0] = node;
-            values[i][1] = Integer.MAX_VALUE;
+            values[i][0] = Integer.MAX_VALUE;
+        }
+        for (int i = 0; i < N; i++) {
+            int hValue = in.nextInt();
+            values[i][1] = hValue; // heuristic value
         }
         for (int i = 0; i < E; i++) {
             int x = in.nextInt();
@@ -37,85 +37,60 @@ class Solution {
             ways.get(x).add(new Destinate(y, c));
             ways.get(y).add(new Destinate(x, c));
         }
-        printWays();
-        // Find the g-value for all nodes
-        BFS(ways, values, new boolean[N], S, G);
-        // boolean[][] isChecked = new boolean[N][N];
-        // for (Map.Entry<Integer, List<Destinate>> entry : ways.entrySet()) {
-        //     List<Destinate> list = entry.getValue();
-        //     for (Destinate destinate : list) {
-        //         BFS(ways, values, isChecked, destinate.distance, 0, destinate.target);
-        //     }
-        // }
-        // Write an answer using System.out.println()
-        // To debug: System.err.println("Debug messages...");
-        System.err.println(Arrays.deepToString(values));
-        for (int i = 0; i < N; i++) {
-            System.out.println(i + " " + (values[i][0] + values[i][1]));
-        }
-    } 
 
-    private static void BFS(Map<Integer, List<Destinate>> map, int[][] values, boolean[] visited, int startNode, int goalNode) {
-        PriorityQueue<Node> queue = new PriorityQueue<>();
-        queue.offer(new Node(startNode, 0));
-        visited[startNode] = true;
-        while (!queue.isEmpty()) {
-            Node currentNode = queue.poll();
-            if (visited[currentNode.id]) {
-                continue;
-            } else {
-                visited[currentNode.id] = true;
-            }
-            if (currentNode.id == goalNode) {
-                break;
-            }
-            for (Destinate destinate : map.getOrDefault(currentNode.id, new ArrayList<>())) {
-                if (visited[destinate.target]) {
-                    continue;
-                }
-                int newDistance = destinate.distance + currentNode.gValue;
-                if (newDistance < values[destinate.target][1]) {
-                    values[destinate.target][1] = newDistance;
-                    queue.offer(new Node(destinate.target, values[destinate.target][1]));
+        // Use a priority queue to process nodes based on the smallest f-value first
+        PriorityQueue<Node> pq = new PriorityQueue<>();
+        pq.add(new Node(S, 0, values[S][1])); // Start with the initial node
+        values[S][0] = 0; // g-value of start node is 0
+
+        boolean[] visited = new boolean[N];
+
+        while (!pq.isEmpty()) {
+            Node current = pq.poll();
+            if (visited[current.id]) continue;
+            visited[current.id] = true;
+
+            System.out.println(current.id + " " + current.f);
+
+            if (current.id == G) break; // Stop when the goal is reached
+
+            for (Destinate neighbor : ways.getOrDefault(current.id, new ArrayList<>())) {
+                if (visited[neighbor.target]) continue;
+
+                int tentativeG = values[current.id][0] + neighbor.distance;
+                if (tentativeG < values[neighbor.target][0]) {
+                    values[neighbor.target][0] = tentativeG; // Update g-value
+                    int fValue = tentativeG + values[neighbor.target][1]; // f = g + h
+                    pq.add(new Node(neighbor.target, tentativeG, fValue));
                 }
             }
-        }
-    }
-
-    private static void printWays() {
-        for (Map.Entry<Integer, List<Destinate>> entry : ways.entrySet()) {
-            Collections.sort(entry.getValue());
-            System.err.print(entry.getKey() + ": ");
-            entry.getValue().stream().forEach(System.err::print);
-            System.err.println();
         }
     }
 }
+
 class Node implements Comparable<Node>{
     int id;
-    int gValue;
-    Node(int id, int gValue) {
+    int g;
+    int f;
+
+    Node(int id, int g, int f) {
         this.id = id;
-        this.gValue = gValue;
+        this.g = g;
+        this.f = f;
     }
-    @Override
-    public int compareTo(Node node) {
-        return this.gValue - node.gValue;
-    }
+
+	@Override
+	public int compareTo(Node node) {
+		return this.f - node.f;
+	}
 }
-class Destinate implements Comparable<Destinate>{
+
+class Destinate {
     int target;
     int distance;
+    
     Destinate(int target, int distance) {
         this.target = target;
         this.distance = distance;
-    }
-    @Override
-    public int compareTo(Destinate destinate) {
-        return this.target - destinate.target;
-    }
-    @Override
-    public String toString() {
-        return target + "-" + distance + ", ";
     }
 }
